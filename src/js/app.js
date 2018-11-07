@@ -3,18 +3,18 @@ App = {
   contracts: {},
 
   init: function () {
-    // Load pets.
-    $.getJSON('../pets.json', function (data) {
-      var petsRow = $('#petsRow');
-      var petTemplate = $('#petTemplate');
+    // Load paintings.
+    $.getJSON('../paintings.json', function (data) {
+      var paintingsRow = $('#paintingsRow');
+      var paintingTemplate = $('#paintingTemplate');
 
       for (i = 0; i < data.length; i++) {
-        petTemplate.find('.panel-title').text(data[i].name);
-        petTemplate.find('img').attr('src', data[i].picture);
-        petTemplate.find('.pet-location').text(data[i].location);
-        petTemplate.find('.btn-adopt').attr('data-id', data[i].id);
+        paintingTemplate.find('.panel-title').text(data[i].name);
+        paintingTemplate.find('img').attr('src', data[i].picture);
+        paintingTemplate.find('.painting-location').text(data[i].location);
+        paintingTemplate.find('.btn-buy').attr('data-id', data[i].id);
 
-        petsRow.append(petTemplate.html());
+        paintingsRow.append(paintingTemplate.html());
       }
     });
 
@@ -26,7 +26,6 @@ App = {
     if (typeof web3 !== 'undefined') {
       App.web3Provider = web3.currentProvider;
     } else {
-      // If no injected web3 instance is detected, fall back to Ganache
       App.web3Provider = new Web3.providers.HttpProvider('https://rinkeby.infura.io/');
     }
     web3 = new Web3(App.web3Provider);
@@ -35,55 +34,55 @@ App = {
   },
 
   initContract: function () {
-    $.getJSON('Adoption.json', function (data) {
+    $.getJSON('Painting.json', function (data) {
       // Get the necessary contract artifact file and instantiate it with truffle-contract
-      var AdoptionArtifact = data;
-      App.contracts.Adoption = TruffleContract(AdoptionArtifact);
+      var PaintingArtifact = data;
+      App.contracts.Painting = TruffleContract(PaintingArtifact);
 
       // Set the provider for our contract
-      App.contracts.Adoption.setProvider(App.web3Provider);
+      App.contracts.Painting.setProvider(App.web3Provider);
 
-      // Use our contract to retrieve and mark the adopted pets
-      return App.markAdopted();
+      // Use our contract to retrieve and mark the sold paintings
+      return App.markSold();
     });
 
     return App.bindEvents();
   },
 
   bindEvents: function () {
-    $(document).on('click', '.btn-adopt', App.handleAdopt);
-    
+    $(document).on('click', '.btn-buy', App.handleBuy);
+
   },
+  
+  markSold: function (customers, account) {
+    var paintingInstance;
 
-  markAdopted: function (adopters, account) {
-    var adoptionInstance;
+    App.contracts.Painting.deployed().then(function (instance) {
+      paintingInstance = instance;
 
-    App.contracts.Adoption.deployed().then(function (instance) {
-      adoptionInstance = instance;
-
-      return adoptionInstance.getAdopters.call();
-    }).then(function (adopters) {
-      for (i = 0; i < adopters.length; i++) {
-        if (adopters[i] !== '0x0000000000000000000000000000000000000000') {
-          $('.panel-pet').eq(i).find('button').text('Success').attr('disabled', true);
-          $('.panel-pet').eq(i).find('a').text(adopters[i])
-          // $('#pet-owner').text(adopters[i]);
+      return paintingInstance.getCustomers.call();
+    }).then(function (customers) {
+      for (i = 0; i < customers.length; i++) {
+        if (customers[i] !== '0x0000000000000000000000000000000000000000') {
+          $('.panel-painting').eq(i).find('button').text('Sold').attr('disabled', true);
+          $('.panel-painting').eq(i).find('a').text(customers[i]);
         }
-        else{
-          $('.panel-pet').eq(i).find('a').text('0x0')
+        else {
+          $('.panel-painting').eq(i).find('a').text('0x')
         }
       }
     }).catch(function (err) {
       console.log(err.message);
     });
+
   },
 
-  handleAdopt: function (event) {
+  handleBuy: function (event) {
     event.preventDefault();
 
-    var petId = parseInt($(event.target).data('id'));
+    var paintingId = parseInt($(event.target).data('id'));
 
-    var adoptionInstance;
+    var paintingInstance;
 
     web3.eth.getAccounts(function (error, accounts) {
       if (error) {
@@ -92,13 +91,13 @@ App = {
 
       var account = accounts[0];
 
-      App.contracts.Adoption.deployed().then(function (instance) {
-        adoptionInstance = instance;
+      App.contracts.Painting.deployed().then(function (instance) {
+        paintingInstance = instance;
 
         // Execute adopt as a transaction by sending account
-        return adoptionInstance.adopt(petId, { from: account });
+        return paintingInstance.buy(paintingId, { from: account });
       }).then(function (result) {
-        return App.markAdopted();
+        return App.markSold();
       }).catch(function (err) {
         console.log(err.message);
       });

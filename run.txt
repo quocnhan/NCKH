@@ -1,4 +1,5 @@
+npm install
 truffle compile
-truffle migrate --network rinkeby
+truffle migrate --network rinkeby --reset
 truffle test
 npm run dev
